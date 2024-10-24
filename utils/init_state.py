@@ -26,10 +26,10 @@ def init_state(start, yaw):
     psi0 = yaw     # 绕 z 轴的偏航角 (yaw)
 
     # 通过 ZXY 顺序的欧拉角转换为旋转矩阵
-    Rot0 = RPYtoRot_ZXY(phi0, theta0, psi0)
+    Rot0 = RPYtoRot_ZXY.RPYtoRot_ZXY(phi0, theta0, psi0)
 
     # 将旋转矩阵转换为四元数
-    Quat0 = RotToQuat(Rot0)
+    Quat0 = RotToQuat.RotToQuat(Rot0)
 
     # 将初始位置填入状态向量
     s[0] = start[0]  # x 位置

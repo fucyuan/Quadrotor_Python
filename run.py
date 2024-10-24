@@ -8,6 +8,8 @@ from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state,q
 from trajectories import step, circle, diamond
 from controller import controller
 
+
+
 # 你可以在这里更改轨迹
 # trajhandle = step
 # trajhandle = circle
@@ -27,7 +29,7 @@ nquad = 1
 time_tol = 25
 
 # 仿真参数
-params = crazyflie()
+params = crazyflie.crazyflie()  # 调用模块内的函数
 
 # **************************** 图像设置 *****************************
 print('初始化图像...')
@@ -48,7 +50,7 @@ starttime = 0  # 仿真开始时间（秒）
 tstep = 0.01  # 解决方案给定的时间步长
 cstep = 0.05  # 图像捕获时间间隔
 nstep = int(cstep / tstep)
-time = starttime  # 当前时间
+current_time = starttime  # 当前时间
 err = None
 
 # 初始化每个四旋翼的状态
@@ -57,10 +59,10 @@ ttraj = []
 x0 = []
 stop = []
 for qn in range(nquad):
-    des_start = trajhandle(0, qn)
-    des_stop = trajhandle(np.inf, qn)
+    des_start = trajhandle.diamond(0, qn)
+    des_stop = trajhandle.diamond(np.inf, qn)
     stop.append(des_stop['pos'])
-    x0.append(init_state(des_start['pos'], 0))
+    x0.append(init_state.init_state(des_start['pos'], 0))
     xtraj.append(np.zeros((max_iter * nstep, len(x0[qn]))))
     ttraj.append(np.zeros(max_iter * nstep))
 
@@ -78,7 +80,7 @@ if OUTPUT_TO_VIDEO == 1:
 
 print('仿真运行中....')
 for iter in range(max_iter):
-    timeint = np.arange(time, time + cstep, tstep)
+    timeint = np.arange(current_time, current_time + cstep, tstep)
     
     tic = time.time()
 
@@ -92,7 +94,7 @@ for iter in range(max_iter):
 
         # 使用 odeint 进行仿真
         def quad_eom(s, t, qn, controlhandle, trajhandle, params):
-            return quadEOM(t, s, qn, controlhandle, trajhandle, params)
+            return quadEOM.quadEOM(t, s, qn, controlhandle, trajhandle, params)
 
         xsave = odeint(quad_eom, x[qn], timeint, args=(qn, controlhandle, trajhandle, params))
         x[qn] = xsave[-1, :]
