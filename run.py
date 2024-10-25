@@ -2,12 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp  # solve_ivp 是 ode45 的等效函数
-
 import time
-
 # 假设这些函数已经定义好
 from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state, quadEOM
-from trajectories import step, circle, diamond
+from trajectories import  circle,diamond
 from controller import controller
 
 # 你可以在这里更改轨迹
@@ -22,7 +20,7 @@ controlhandle = controller
 real_time = True
 
 # *********** 你不需要修改以下任何内容 **********
-# 四旋翼数量
+# 四旋翼数量(只能是1)
 nquad = 1
 
 # 最大时间
@@ -35,7 +33,7 @@ params = crazyflie()  # 调用模块内的 crazyflie 参数
 print('初始化图像...')
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')  # 3D 绘图
-ax.set_box_aspect([1, 1, 1])
+ax.set_box_aspect([0.1, 0.1, 100])
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
 ax.set_zlabel('Z [m]')
@@ -67,13 +65,15 @@ for qn in range(nquad):
     xtraj.append(np.zeros((max_iter * nstep, len(x0[qn]))))  # 初始化轨迹存储
     ttraj.append(np.zeros(max_iter * nstep))  # 初始化时间存储
 
+
+
 x = x0  # 当前状态
 pos_tol = 0.01  # 位置容差
 vel_tol = 0.01  # 速度容差
 print(f"x[{qn}] = {x[qn]}")
 
 # ************************* 运行仿真 *************************
-OUTPUT_TO_VIDEO = 0
+OUTPUT_TO_VIDEO = 1
 if OUTPUT_TO_VIDEO == 1:
     import cv2
     video_filename = 'diamond.avi'
@@ -82,10 +82,10 @@ if OUTPUT_TO_VIDEO == 1:
 
 print('仿真运行中....')
 for iter in range(max_iter):
-    timeint = np.arange(current_time, current_time + cstep, tstep)  # 时间间隔
-    
+    timeint = np.arange(current_time, current_time + cstep + tstep, tstep)
+    # print(timeint)
     tic = time.time()
-
+    # print(tic)
     # 遍历每个四旋翼
     for qn in range(nquad):
         # 初始化四旋翼图像
@@ -93,22 +93,22 @@ for iter in range(max_iter):
             QP = QuadPlot(qn, x0[qn], 0.1, 0.04, quadcolors(qn), max_iter, ax)
             desired_state = trajhandle(current_time, qn)
             QP.update_quad_plot(x[qn], np.hstack([desired_state['pos'], desired_state['vel']]), current_time)
-
         # 使用 odeint 进行仿真
         def quad_eom(s, t, qn, controlhandle, trajhandle, params):
             return quadEOM(t, s, qn, controlhandle, trajhandle, params)
 
         # 仿真四旋翼动力学
         # xsave = odeint(quadEOM, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-9, rtol=1e-6)
-        xsave = odeint(quad_eom, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-9, rtol=1e-6)
+        xsave = odeint(quad_eom, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-5, rtol=1e-3)
         x[qn] = xsave[-1, :]  # 更新状态
 
-        # 计算实际可以保存的步数，使用 min 确保长度一致
-        num_steps = min(xsave.shape[0] - 1, len(timeint) - 1)
+        # # 计算实际可以保存的步数，使用 min 确保长度一致
+        # num_steps = min(xsave.shape[0] - 1, len(timeint) - 1)
 
-        # 保存轨迹和时间
-        xtraj[qn][iter * num_steps:(iter + 1) * num_steps, :] = xsave[:num_steps, :]
-        ttraj[qn][iter * num_steps:(iter + 1) * num_steps] = timeint[:num_steps]
+        # # 保存轨迹和时间
+        # xtraj[qn][iter * num_steps:(iter + 1) * num_steps, :] = xsave[:num_steps, :]
+        # ttraj[qn][iter * num_steps:(iter + 1) * num_steps] = timeint[:num_steps]
+        # print(xtraj)
 
 
         # # 保存轨迹
@@ -134,9 +134,10 @@ for iter in range(max_iter):
 
     current_time += cstep  # 更新仿真时间
     elapsed = time.time() - tic  # 计算仿真步长耗时
+    # print(elapsed)
 
     # 检查 odeint 是否超时
-    if elapsed > cstep * 50:
+    if elapsed > cstep * 5000:
         err = 'odeint 不稳定'
         break
 
@@ -161,18 +162,123 @@ for qn in range(nquad):
 for qn in range(nquad):
     QP.truncate_hist()
 
-    # 绘制位置
-    h_pos = plt.figure(f'Quad {qn} : position')
-    plot_state(h_pos, QP.state_hist[:3, :], QP.time_hist, 'pos', 'vic')  # 绘制实际位置
-    plot_state(h_pos, QP.state_des_hist[:3, :], QP.time_hist, 'pos', 'des')  # 绘制期望位置
+    #   # 创建一个图像和轴对象
+    # fig, ax = plt.subplots(3, 1, figsize=(8, 6))  # 创建3个子图
 
-    # 绘制速度
-    h_vel = plt.figure(f'Quad {qn} : velocity')
-    plot_state(h_vel, QP.state_hist[3:6, :], QP.time_hist, 'vel', 'vic')  # 绘制实际速度
-    plot_state(h_vel, QP.state_des_hist[3:6, :], QP.time_hist, 'vel', 'des')  # 绘制期望速度
+    # # 绘制实际位置
+    # ax[0].plot(QP.time_hist, QP.state_hist[0, :], 'r-', label=' x (vic)')
+    # ax[1].plot(QP.time_hist, QP.state_hist[1, :], 'r-', label=' y (vic)')
+    # ax[2].plot(QP.time_hist, QP.state_hist[2, :], 'r-', label=' z (vic)')
 
-# 保持所有窗口打开
-plt.show()
+    # # 设置轴标签和网格
+    # for i in range(3):
+    #     ax[i].set_xlabel('Time [s]')
+    #     ax[i].set_ylabel('Position [m]')
+    #     ax[i].grid(True)
+    #     ax[i].legend()
+
+    #     # 创建一个图像和轴对象
+    # fig, ax = plt.subplots(3, 1, figsize=(8, 6))  # 创建3个子图
+
+    # # 绘制期望位置
+    # ax[0].plot(QP.time_hist, QP.state_des_hist[0, :], 'b-', label='期望位置 x (des)')
+    # ax[1].plot(QP.time_hist, QP.state_des_hist[1, :], 'b-', label='期望位置 y (des)')
+    # ax[2].plot(QP.time_hist, QP.state_des_hist[2, :], 'b-', label='期望位置 z (des)')
+
+    # # 设置轴标签和网格
+    # for i in range(3):
+    #     ax[i].set_xlabel('Time [s]')
+    #     ax[i].set_ylabel('Position [m]')
+    #     ax[i].grid(True)
+    #     ax[i].legend()
+
+    # 创建一个图像和轴对象
+    fig, ax = plt.subplots(3, 1, figsize=(8, 6))  # 创建3个子图
+
+    # 绘制实际位置和期望位置
+    ax[0].plot(QP.time_hist, QP.state_hist[0, :], 'r-', label='Actual x (vic)')
+    ax[0].plot(QP.time_hist, QP.state_des_hist[0, :], 'b--', label='Desire x (des)')
+
+    ax[1].plot(QP.time_hist, QP.state_hist[1, :], 'r-', label='Actual y (vic)')
+    ax[1].plot(QP.time_hist, QP.state_des_hist[1, :], 'b--', label='Desire y (des)')
+
+    ax[2].plot(QP.time_hist, QP.state_hist[2, :], 'r-', label='Actual z (vic)')
+    ax[2].plot(QP.time_hist, QP.state_des_hist[2, :], 'b--', label='Desire z (des)')
+
+    # 设置轴标签和网格
+    for i in range(3):
+        ax[i].set_xlabel('Time [s]')
+        ax[i].set_ylabel('Position [m]')
+        ax[i].grid(True)
+        ax[i].legend()
+
+     # 创建一个图像和轴对象
+    fig, ax = plt.subplots(3, 1, figsize=(8, 6))  # 创建3个子图
+    # 绘制实际位置和期望位置
+    ax[0].plot(QP.time_hist, QP.state_hist[3, :], 'r-', label='Actual x (vic)')
+    ax[0].plot(QP.time_hist, QP.state_des_hist[3, :], 'b--', label='Desire x (des)')
+
+    ax[1].plot(QP.time_hist, QP.state_hist[4, :], 'r-', label='Actual y (vic)')
+    ax[1].plot(QP.time_hist, QP.state_des_hist[4, :], 'b--', label='Desire y (des)')
+
+    ax[2].plot(QP.time_hist, QP.state_hist[5, :], 'r-', label='Actual z (vic)')
+    ax[2].plot(QP.time_hist, QP.state_des_hist[5, :], 'b--', label='Desire z (des)')
+
+    # 设置轴标签和网格
+    for i in range(3):
+        ax[i].set_xlabel('Time [s]')
+        ax[i].set_ylabel('Velocity [m]')
+        ax[i].grid(True)
+        ax[i].legend()
+
+    # # 绘制位置
+    # h_pos = plt.figure(f'Quad {qn} : position')
+    # plot_state(h_pos, QP.state_hist[:3, :], QP.time_hist, 'pos', 'vic')  # 绘制实际位置
+    # plot_state(h_pos, QP.state_des_hist[:3, :], QP.time_hist, 'pos', 'des')  # 绘制期望位置
+
+    # # 绘制速度
+    # h_vel = plt.figure(f'Quad {qn} : velocity')
+    # plot_state(h_vel, QP.state_hist[3:6, :], QP.time_hist, 'vel', 'vic')  # 绘制实际速度
+    # h_vel1 = plt.figure(f'Quad {qn} : velocitys')
+    # plot_state(h_vel1, QP.state_des_hist[3:6, :], QP.time_hist, 'vel', 'des')  # 绘制期望速度
+    h_fig, axs = plt.subplots(3, 1, figsize=(8, 6))
+
+    # 绘制实际位置
+    plot_state(h_fig, QP.state_hist[:3, :], QP.time_hist, name='pos', plot_type='vic', view='sep', ax=axs)
+
+
+    # # 创建一个 3D 轴
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+
+
+    # 绘制期望位置
+    plot_state(h_fig, QP.state_des_hist[:3, :], QP.time_hist, name='pos', plot_type='des', view='sep', ax=axs)
+
+    # 添加图例，确保两条线的可见性
+    axs[0].legend(['Actual (vic)', 'Desire (des)'])
+
+
+
+    v_fig, axs = plt.subplots(3, 1, figsize=(8, 6))
+
+    # 绘制实际位置
+    plot_state(v_fig, QP.state_hist[3:6, :], QP.time_hist, name='pos', plot_type='vic', view='sep', ax=axs)
+
+
+    # # 创建一个 3D 轴
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+
+
+    # 绘制期望位置
+    plot_state(v_fig, QP.state_des_hist[3:6, :], QP.time_hist, name='pos', plot_type='des', view='sep', ax=axs)
+
+    # 添加图例，确保两条线的可见性
+    axs[0].legend(['Actual (vic)', 'Desire (des)'])
+
+    # 保持所有窗口打开
+    plt.show()
 
 
 # 如果出现错误，则抛出异常
@@ -180,3 +286,5 @@ if err is not None:
     raise RuntimeError(err)
 
 print('仿真结束。')
+
+
