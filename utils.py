@@ -421,26 +421,56 @@ class QuadPlot:
         self.update_quad_hist()
         self.update_motor_pos()
 
+        # # 更新电机位置的绘图
+        # self.h_m13.set_data(self.motor[0, [0, 2]], self.motor[1, [0, 2]])
+        # self.h_m13.set_3d_properties(self.motor[2, [0, 2]])
+
+        # self.h_m24.set_data(self.motor[0, [1, 3]], self.motor[1, [1, 3]])
+        # self.h_m24.set_3d_properties(self.motor[2, [1, 3]])
+
+        # self.h_qz.set_data(self.motor[0, [4, 5]], self.motor[1, [4, 5]])
+        # self.h_qz.set_3d_properties(self.motor[2, [4, 5]])
+
+        # # 更新四旋翼编号的文本位置
+        # self.h_qn.set_position((self.motor[0, 4] + self.text_dist, self.motor[1, 4] + self.text_dist))
+        # self.h_qn.set_3d_properties(self.motor[2, 4] + self.text_dist)
+
+        # # 更新位置历史记录
+        # self.h_pos_hist.set_data(self.state_hist[0, :self.k], self.state_hist[1, :self.k])
+        # self.h_pos_hist.set_3d_properties(self.state_hist[2, :self.k])
+
+        # self.h_pos_des_hist.set_data(self.state_des_hist[0, :self.k], self.state_des_hist[1, :self.k])
+        # self.h_pos_des_hist.set_3d_properties(self.state_des_hist[2, :self.k])
+
         # 更新电机位置的绘图
-        self.h_m13.set_data(self.motor[0, [0, 2]], self.motor[1, [0, 2]])
-        self.h_m13.set_3d_properties(self.motor[2, [0, 2]])
+        # self.h_m13 表示电机 1 和 3 之间的连线，它是一个 3D 图形对象
+        self.h_m13.set_data(self.motor[0, [0, 2]], self.motor[1, [0, 2]])  # 设置电机 1 和 3 的 X 和 Y 轴数据
+        self.h_m13.set_3d_properties(self.motor[2, [0, 2]])  # 设置电机 1 和 3 的 Z 轴数据
 
-        self.h_m24.set_data(self.motor[0, [1, 3]], self.motor[1, [1, 3]])
-        self.h_m24.set_3d_properties(self.motor[2, [1, 3]])
+        # self.h_m24 表示电机 2 和 4 之间的连线
+        self.h_m24.set_data(self.motor[0, [1, 3]], self.motor[1, [1, 3]])  # 设置电机 2 和 4 的 X 和 Y 轴数据
+        self.h_m24.set_3d_properties(self.motor[2, [1, 3]])  # 设置电机 2 和 4 的 Z 轴数据
 
-        self.h_qz.set_data(self.motor[0, [4, 5]], self.motor[1, [4, 5]])
-        self.h_qz.set_3d_properties(self.motor[2, [4, 5]])
+        # self.h_qz 表示四旋翼的 Z 轴连线，可能用于表示方向或者姿态信息
+        self.h_qz.set_data(self.motor[0, [4, 5]], self.motor[1, [4, 5]])  # 设置电机 5 和 6 的 X 和 Y 轴数据
+        self.h_qz.set_3d_properties(self.motor[2, [4, 5]])  # 设置电机 5 和 6 的 Z 轴数据
 
-        # 更新四旋翼编号的文本位置
-        self.h_qn.set_position((self.motor[0, 4] + self.text_dist, self.motor[1, 4] + self.text_dist))
-        self.h_qn.set_3d_properties(self.motor[2, 4] + self.text_dist)
+        # 更新四旋翼的编号显示
+        # self.h_qn 是用于显示四旋翼编号的文本对象
+        # text_dist 表示文本对象距离电机的距离，便于清晰显示编号
+        self.h_qn.set_position((self.motor[0, 4] + self.text_dist, self.motor[1, 4] + self.text_dist))  # 设置文本的 X 和 Y 轴位置
+        self.h_qn.set_text(f"({self.motor[0, 4]:.2f}, {self.motor[1, 4]:.2f}, {self.motor[2, 4]:.2f})")  # 更新文本内容，显示电机 5 的位置数据
 
-        # 更新位置历史记录
-        self.h_pos_hist.set_data(self.state_hist[0, :self.k], self.state_hist[1, :self.k])
-        self.h_pos_hist.set_3d_properties(self.state_hist[2, :self.k])
+        # 更新无人机的历史位置轨迹
+        # self.h_pos_hist 是一个 3D 图形对象，表示无人机的实际飞行轨迹
+        self.h_pos_hist.set_data(self.state_hist[0, :self.k], self.state_hist[1, :self.k])  # 设置历史位置的 X 和 Y 轴数据
+        self.h_pos_hist.set_3d_properties(self.state_hist[2, :self.k])  # 设置历史位置的 Z 轴数据
 
-        self.h_pos_des_hist.set_data(self.state_des_hist[0, :self.k], self.state_des_hist[1, :self.k])
-        self.h_pos_des_hist.set_3d_properties(self.state_des_hist[2, :self.k])
+        # 更新无人机的期望位置轨迹
+        # self.h_pos_des_hist 表示无人机的期望飞行轨迹
+        self.h_pos_des_hist.set_data(self.state_des_hist[0, :self.k], self.state_des_hist[1, :self.k])  # 设置期望历史位置的 X 和 Y 轴数据
+        self.h_pos_des_hist.set_3d_properties(self.state_des_hist[2, :self.k])  # 设置期望历史位置的 Z 轴数据
+
 
         # 动态更新XYZ轴的范围，根据状态或历史记录的最大最小值
         x_min, x_max = min(self.state_hist[0, :self.k]), max(self.state_hist[0, :self.k])
