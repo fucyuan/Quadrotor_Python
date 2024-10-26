@@ -528,8 +528,6 @@ def quadEOM(t, s, qn, controlhandle, trajhandle, params):
     return sdot
 
 
-import numpy as np
-
 def quadEOM_readonly(t, s, F, M, params):
     """
     计算四旋翼飞行器的运动方程，并计算状态向量的导数。
