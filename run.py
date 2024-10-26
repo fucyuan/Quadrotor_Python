@@ -4,13 +4,14 @@ from scipy.integrate import odeint
 from scipy.integrate import solve_ivp  # solve_ivp 是 ode45 的等效函数
 import time
 from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state, quadEOM
-from trajectories import  circle,diamond
+from trajectories import  circle,diamond,eight_shape,step
 from controller import controller
-
+# from utils.crazyflie import crazyflie
 # 你可以在这里更改轨迹
 # trajhandle = step
-trajhandle = circle
-# trajhandle = diamond  # 使用 diamond 轨迹
+# trajhandle = circle
+trajhandle = diamond  # 使用 diamond 轨迹
+# trajhandle = eight_shape
 
 # 控制器
 controlhandle = controller
@@ -31,12 +32,16 @@ params = crazyflie()  # 调用模块内的 crazyflie 参数
 # **************************** 图像设置 *****************************
 print('初始化图像...')
 fig = plt.figure()
+
 ax = fig.add_subplot(111, projection='3d')  # 3D 绘图
 ax.set_box_aspect([0.1, 0.1, 100])
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
 ax.set_zlabel('Z [m]')
 ax.grid(True)
+# 设置图像窗口大小，使其与视频分辨率匹配 (640x480)
+fig.set_size_inches(6.4, 4.8)  # 以英寸为单位设置窗口大小，确保宽高比是 640x480
+fig.set_dpi(100)  # 设置每英寸像素点，确保图像是 640x480 像素
 
 # 使用 'hsv' 色彩映射，nquad 是四旋翼数量
 quadcolors = plt.get_cmap('hsv', nquad)
@@ -126,17 +131,34 @@ for iter in range(max_iter):
         desired_state = trajhandle(current_time + cstep, qn)
         QP.update_quad_plot(x[qn], np.hstack([desired_state['pos'], desired_state['vel']]), current_time + cstep)
         
+        # if OUTPUT_TO_VIDEO == 1:
+        #     fig.canvas.draw()  # 更新绘图
+        #     frame = np.array(fig.canvas.buffer_rgba())  # 获取图像数据
+        #     out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))  # 保存为视频
         if OUTPUT_TO_VIDEO == 1:
-            fig.canvas.draw()  # 更新绘图
+             # 获取当前图像的宽度和高度 
+            fig.canvas.draw()  # 更新绘图 
+            width, height = fig.canvas.get_width_height()
+
+            # 从绘图缓冲区中提取图像数据，去掉 reshape 操作
             frame = np.array(fig.canvas.buffer_rgba())  # 获取图像数据
-            out.write(cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR))  # 保存为视频
+           
+            # 使用 OpenCV 强制调整图像大小为 640x480
+            frame_resized = cv2.resize(frame, (640, 480))  # 强制调整图像大小到 640x480
+
+            # 转换图像为 BGR 格式并写入视频
+            out.write(cv2.cvtColor(frame_resized, cv2.COLOR_RGB2BGR))  # 写入视频帧
+
+
+
+
     
     current_time += cstep  # 更新仿真时间
     elapsed = time.time() - tic  # 计算仿真步长耗时
     # print(elapsed)
 
     # 检查 odeint 是否超时
-    if elapsed > cstep * 5000:
+    if elapsed > cstep * 50:
         err = 'odeint 不稳定'
         break
 
@@ -275,9 +297,11 @@ for qn in range(nquad):
 
     # 添加图例，确保两条线的可见性
     axs[0].legend(['Actual (vic)', 'Desire (des)'])
+    try:
+        plt.show()
+    except KeyboardInterrupt:
+        print("程序被手动中断。")
 
-    # 保持所有窗口打开
-    plt.show()
 
 
 # 如果出现错误，则抛出异常
