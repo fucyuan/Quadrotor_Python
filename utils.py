@@ -1,13 +1,7 @@
 import numpy as np
-# from utils import collision_check  # 假设 collision_check 函数已经定义
-import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.distance import pdist
-# from utils import RPYtoRot_ZXY, RotToQuat  # 假设这些函数已经在 utils.py 中定义
-
-
-# from utils import QuatToRot, quad_pos  # 假设这些函数已定义
 def terminate_check(x, current_time, stop, pos_tol, vel_tol, time_tol):
     """
     检查终止条件，包括位置、速度和时间的容差。
@@ -473,9 +467,9 @@ class QuadPlot:
 
 
         # 动态更新XYZ轴的范围，根据状态或历史记录的最大最小值
-        x_min, x_max = min(self.state_hist[0, :self.k]), max(self.state_hist[0, :self.k])
-        y_min, y_max = min(self.state_hist[1, :self.k]), max(self.state_hist[1, :self.k])
-        z_min, z_max = min(self.state_hist[2, :self.k]), max(self.state_hist[2, :self.k])
+        x_min, x_max = min(self.state_des_hist[0, :self.k]), max(self.state_des_hist[0, :self.k])
+        y_min, y_max = min(self.state_des_hist[1, :self.k]), max(self.state_des_hist[1, :self.k])
+        z_min, z_max = min(self.state_des_hist[2, :self.k]), max(self.state_des_hist[2, :self.k])
 
         # 设置一些边界值，使范围稍微大于实际值，避免图像太过紧凑
         margin = 0.5
