@@ -332,7 +332,7 @@ def circle(t, qn):
             t (float): 当前时间
 
         返回:
-            ndarray: 速度 [vx, vy, vz]
+            ndarray: 速度 [vx, vy, vz]xiuxii
         """
         angle1, _, _ = tj_from_line(0, 2 * np.pi, time_tol, t)
         pos1 = pos_from_angle(angle1)
@@ -349,6 +349,99 @@ def circle(t, qn):
         vel = get_vel(t)
         acc = (get_vel(t + dt) - get_vel(t)) / dt
 
+    yaw = 0
+    yawdot = 0
+
+    # 返回期望状态
+    desired_state = {
+        'pos': pos,
+        'vel': vel,
+        'acc': acc,
+        'yaw': yaw,
+        'yawdot': yawdot
+    }
+
+    return desired_state
+
+
+def eight_shape(t, qn, time_tol=24, radius=5):
+    """
+    生成连续且可跟随的8字形轨迹的期望状态。
+    
+    参数:
+        t (float): 当前时间
+        qn (int): 无人机编号
+        time_tol (float): 轨迹的总时间，增大该值可以减缓运动速度
+        radius (float): 轨迹的半径大小
+    
+    返回:
+        desired_state (dict): 期望状态，包括位置、速度、加速度、偏航角和偏航角速度
+    """
+    
+    dt = 0.001  # 时间步长
+    
+    # 计算归一化的当前时间（让时间在 0 到 2π 之间）
+    t_normalized = (t % time_tol) / time_tol * 2 * np.pi
+    
+    # 使用参数方程生成8字形轨迹
+    def pos_from_angle(a):
+        """
+        根据角度 a 计算8字形轨迹的三维位置。
+        
+        参数:
+            a (float): 当前的参数角度
+        
+        返回:
+            ndarray: 位置 [x, y, z]
+        """
+        x = radius * np.sin(a)
+        y = radius * np.sin(2 * a) / 2  # 使用 sin(2a) 生成8字形
+        z = 2.5 * (a / (2 * np.pi))  # 线性上升的z坐标
+        return np.array([x, y, z])
+    
+    # 计算速度
+    def get_vel(t):
+        """
+        根据时间 t 计算8字形轨迹的速度。
+        
+        参数:
+            t (float): 当前时间
+        
+        返回:
+            ndarray: 速度 [vx, vy, vz]
+        """
+        angle1 = t_normalized
+        pos1 = pos_from_angle(angle1)
+        angle2 = t_normalized + dt * 2 * np.pi / time_tol
+        pos2 = pos_from_angle(angle2)
+        return (pos2 - pos1) / dt
+    
+    # 计算加速度
+    def get_acc(t):
+        """
+        根据时间 t 计算8字形轨迹的加速度。
+        
+        参数:
+            t (float): 当前时间
+        
+        返回:
+            ndarray: 加速度 [ax, ay, az]
+        """
+        vel1 = get_vel(t)
+        vel2 = get_vel(t + dt)
+        return (vel2 - vel1) / dt
+    
+    # 限制最大速度
+    max_speed = 1.5  # 最大速度，根据无人机的能力设置
+    vel = get_vel(t)
+    speed = np.linalg.norm(vel)
+    if speed > max_speed:
+        vel = vel / speed * max_speed  # 将速度限制在最大值范围内
+    
+    # 计算当前的期望位置、速度和加速度
+    pos = pos_from_angle(t_normalized)
+    acc = get_acc(t)
+    
     yaw = 0
     yawdot = 0
 
