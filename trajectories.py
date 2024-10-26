@@ -292,9 +292,6 @@ def tj_from_line(start_pos, end_pos, time_ttl, t_c):
     
     return pos, vel, acc
 
-
-import numpy as np
-
 def circle(t, qn):
     """
     生成圆形轨迹的期望状态。
@@ -454,4 +451,47 @@ def eight_shape(t, qn, time_tol=24, radius=5):
         'yawdot': yawdot
     }
 
+    return desired_state
+
+
+def step(t, qn):
+    """
+    生成悬停轨迹的函数，用于四旋翼无人机
+    t: 时间
+    qn: 无人机编号（可忽略在这个例子中）
+    
+    返回：
+    desired_state: 包含位置、速度、加速度、偏航角、偏航角速度的字典
+    """
+    
+    # 设置时间容差和轨迹长度（这些变量在此代码中没有被使用，但可以在未来扩展中用到）
+    time_tol = 5  # 时间容差，用于将来处理可能的切换或延时
+    length = 5  # 轨迹长度（可以表示圆的半径等）
+    
+    # 初始化 pos, vel, acc（位置、速度、加速度）
+    # 如果时间 t 小于等于 0，无人机还未开始飞行，处于原点
+    if t <= 0:
+        pos = np.array([0, 0, 0])  # 无人机的初始位置 (0, 0, 0)
+        vel = np.array([0, 0, 0])  # 无人机的初始速度为 0
+        acc = np.array([0, 0, 0])  # 无人机的初始加速度为 0
+    else:
+        # 在 t > 0 的情况下，设置无人机的目标位置为 (1, 0, 0)
+        # 速度和加速度保持为 0
+        pos = np.array([1, 0, 0])  # 无人机的目标位置 (1, 0, 0)
+        vel = np.array([0, 0, 0])  # 无人机的速度依然为 0，表示悬停
+        acc = np.array([0, 0, 0])  # 无人机的加速度为 0，表示匀速
+    
+    # 设置偏航角（yaw）和偏航角速度（yawdot）
+    yaw = 0  # 偏航角设置为 0，表示无人机正对前方
+    yawdot = 0  # 偏航角速度为 0，表示无人机不会旋转
+    
+    # 创建并返回一个字典，包含无人机的期望状态
+    desired_state = {
+        'pos': pos,         # 无人机的期望位置
+        'vel': vel,         # 无人机的期望速度
+        'acc': acc,         # 无人机的期望加速度
+        'yaw': yaw,         # 无人机的期望偏航角
+        'yawdot': yawdot    # 无人机的期望偏航角速度
+    }
+    
     return desired_state
