@@ -486,40 +486,52 @@ class QuadPlot:
 
 def quadEOM(t, s, qn, controlhandle, trajhandle, params):
     """
-    quadEOM: Wrapper function for solving quadrotor equation of motion in Python.
-
-    Inputs:
-        t             - float, time
-        s             - numpy array of shape (13,), state vector = [x, y, z, xd, yd, zd, qw, qx, qy, qz, p, q, r]
-        qn            - int, quad number (used for multi-robot simulations)
-        controlhandle - function handle of the controller
-        trajhandle    - function handle of the trajectory generator
-        params        - dict, parameters needed for the quadrotor, including physical properties
-
-    Outputs:
-        sdot          - numpy array of shape (13,), derivative of the state vector s
+    quadEOM: 用于求解四旋翼无人机运动方程的包装函数 (EOM: Equation of Motion)。
+    
+    输入参数:
+        t             - 浮点数，时间
+        s             - 形状为 (13,) 的 numpy 数组，状态向量 s = [x, y, z, xd, yd, zd, qw, qx, qy, qz, p, q, r]
+                        其中:
+                        [x, y, z] 是无人机在世界坐标系中的位置，
+                        [xd, yd, zd] 是无人机的速度，
+                        [qw, qx, qy, qz] 是无人机的四元数（表示旋转姿态），
+                        [p, q, r] 是无人机的角速度。
+        qn            - 整数，表示无人机的编号（用于多无人机仿真）。
+        controlhandle - 控制器函数的句柄（即函数指针，表示控制器的执行逻辑）。
+        trajhandle    - 轨迹生成器函数的句柄（即函数指针，表示期望轨迹生成的逻辑）。
+        params        - 字典类型，包含四旋翼所需的参数（例如物理属性：质量、重力、惯性矩等）。
+    
+    输出参数:
+        sdot          - 形状为 (13,) 的 numpy 数组，状态向量的导数，即状态向量的变化率。
+                        这个输出将用于仿真中更新状态。
     """
 
-    # Convert state to quad struct for control
+    # 将当前状态转化为控制器能够理解的 qd（无人机状态结构体）
+    # 这个函数将状态向量 s 转化为 qd 结构，其中包含无人机的当前位置、速度、角度等信息
     qd = stateToQd(s)
 
-    # Get desired state
+    # 获取期望的状态 (轨迹)
+    # 轨迹生成器根据当前时间 t 和无人机编号 qn，生成无人机的期望轨迹状态
     desired_state = trajhandle(t, qn)
 
-    # Set the desired states (position, velocity, acceleration, yaw, yawdot)
-    qd['pos_des'] = desired_state['pos']
-    qd['vel_des'] = desired_state['vel']
-    qd['acc_des'] = desired_state['acc']
-    qd['yaw_des'] = desired_state['yaw']
-    qd['yawdot_des'] = desired_state['yawdot']
+    # 设置期望状态 (位置、速度、加速度、偏航角、偏航角速度)
+    qd['pos_des'] = desired_state['pos']       # 期望位置
+    qd['vel_des'] = desired_state['vel']       # 期望速度
+    qd['acc_des'] = desired_state['acc']       # 期望加速度
+    qd['yaw_des'] = desired_state['yaw']       # 期望偏航角 (yaw)
+    qd['yawdot_des'] = desired_state['yawdot'] # 期望偏航角速度 (yawdot)
 
-    # Get control outputs (thrust, moments, trpy, drpy)
+    # 调用控制器函数，根据当前状态 qd 和期望状态，计算出控制器输出
+    # F 为推力，M 为控制力矩，trpy 和 drpy 为期望推力和角速度，主要用于硬件接口
     F, M, trpy, drpy = controlhandle(qd, t, qn, params)
 
-    # Compute the derivative of the state vector
+    # 计算状态向量的导数 (sdot)，即无人机的运动方程
+    # 这个函数基于当前状态 s、推力 F、力矩 M 以及物理参数 params，计算无人机状态的变化率
     sdot = quadEOM_readonly(t, s, F, M, params)
 
+    # 返回状态导数，用于仿真中更新状态
     return sdot
+
 
 
 def quadEOM_readonly(t, s, F, M, params):
