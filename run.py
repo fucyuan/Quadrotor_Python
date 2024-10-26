@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp  # solve_ivp 是 ode45 的等效函数
 import time
-# 假设这些函数已经定义好
 from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state, quadEOM
 from trajectories import  circle,diamond
 from controller import controller
@@ -126,12 +125,12 @@ for iter in range(max_iter):
         # 更新四旋翼图像
         desired_state = trajhandle(current_time + cstep, qn)
         QP.update_quad_plot(x[qn], np.hstack([desired_state['pos'], desired_state['vel']]), current_time + cstep)
-
+        
         if OUTPUT_TO_VIDEO == 1:
             fig.canvas.draw()  # 更新绘图
             frame = np.array(fig.canvas.buffer_rgba())  # 获取图像数据
             out.write(cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR))  # 保存为视频
-
+    
     current_time += cstep  # 更新仿真时间
     elapsed = time.time() - tic  # 计算仿真步长耗时
     # print(elapsed)
@@ -263,7 +262,7 @@ for qn in range(nquad):
     v_fig, axs = plt.subplots(3, 1, figsize=(8, 6))
 
     # 绘制实际位置
-    plot_state(v_fig, QP.state_hist[3:6, :], QP.time_hist, name='pos', plot_type='vic', view='sep', ax=axs)
+    plot_state(v_fig, QP.state_hist[3:6, :], QP.time_hist, name='vel', plot_type='vic', view='sep', ax=axs)
 
 
     # # 创建一个 3D 轴
@@ -272,7 +271,7 @@ for qn in range(nquad):
 
 
     # 绘制期望位置
-    plot_state(v_fig, QP.state_des_hist[3:6, :], QP.time_hist, name='pos', plot_type='des', view='sep', ax=axs)
+    plot_state(v_fig, QP.state_des_hist[3:6, :], QP.time_hist, name='vel', plot_type='des', view='sep', ax=axs)
 
     # 添加图例，确保两条线的可见性
     axs[0].legend(['Actual (vic)', 'Desire (des)'])

@@ -482,8 +482,10 @@ class QuadPlot:
         self.ax.set_xlim([x_min - margin, x_max + margin])
         self.ax.set_ylim([y_min - margin, y_max + margin])
         self.ax.set_zlim([z_min - margin, z_max + margin])
-
+        
         plt.draw()  # 刷新图像
+        plt.pause(0.001)  # 暂停以更新图像
+        
 
 
 
