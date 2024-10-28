@@ -1,17 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as R
 from scipy.integrate import odeint
 from scipy.integrate import solve_ivp  # solve_ivp 是 ode45 的等效函数
 import time
-from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state, quadEOM
+from utils import QuadPlot, init_state, crazyflie, terminate_check, plot_state, quadEOM,calculate_euler_angles
 from trajectories import  circle,diamond,eight_shape,step
 from controller import controller
 # from utils.crazyflie import crazyflie
 # 你可以在这里更改轨迹
-trajhandle = step
+# trajhandle = step
 # trajhandle = circle
 # trajhandle = diamond  # 使用 diamond 轨迹
-# trajhandle = eight_shape
+trajhandle = eight_shape
 
 # 控制器
 controlhandle = controller
@@ -59,6 +60,8 @@ err = None
 # 初始化每个四旋翼的状态
 xtraj = []
 ttraj = []
+# 每个列表将用于动态存储该无人机的 [roll, pitch, yaw] 数据
+desired_Euler = [[] for _ in range(nquad)]
 x0 = []
 stop = []
 for qn in range(nquad):
@@ -89,18 +92,25 @@ for iter in range(max_iter):
     timeint = np.arange(current_time, current_time + cstep + tstep, tstep)
     # print(timeint)
     tic = time.time()
+    
     # print(tic)
     # 遍历每个四旋翼
     for qn in range(nquad):
+    
         # 初始化四旋翼图像
         if iter == 0:  # 注意这里需要修正为 iter == 0，第一次绘图
             QP = QuadPlot(qn, x0[qn], 0.1, 0.04, quadcolors(qn), max_iter, ax)
             desired_state = trajhandle(current_time, qn)
+            euler_angles = calculate_euler_angles(desired_state)
+
+            # 将欧拉角 [roll, pitch, yaw] 以列表形式存储到对应无人机的欧拉角列表中
+            desired_Euler[qn].append([euler_angles['roll'], euler_angles['pitch'], euler_angles['yaw']])
             QP.update_quad_plot(x[qn], np.hstack([desired_state['pos'], desired_state['vel']]), current_time)
         # 使用 odeint 进行仿真
         def quad_eom(s, t, qn, controlhandle, trajhandle, params):
             return quadEOM(t, s, qn, controlhandle, trajhandle, params)
-
+    
+        
         # 仿真四旋翼动力学
         # xsave = odeint(quadEOM, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-9, rtol=1e-6)
         xsave = odeint(quad_eom, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-5, rtol=1e-3)
@@ -116,13 +126,15 @@ for iter in range(max_iter):
         end_idx = (iter + 1) * nstep
         xtraj[qn][start_idx:end_idx+1, :] = xsave[0:6, :]  # 保留 xsave 的前 n-1 行
         ttraj[qn][start_idx:end_idx+1] = timeint[0:6]  # 保留 tsave 的前 n-1 行
-
-
-
-    
+        
 
         # 更新四旋翼图像
         desired_state = trajhandle(current_time + cstep, qn)
+        # 计算期望的欧拉角，假设 calculate_euler_angles 函数基于每次迭代的状态
+        euler_angles = calculate_euler_angles(desired_state)
+
+        # 将欧拉角 [roll, pitch, yaw] 以列表形式存储到对应无人机的欧拉角列表中
+        desired_Euler[qn].append([euler_angles['roll'], euler_angles['pitch'], euler_angles['yaw']])
         QP.update_quad_plot(x[qn], np.hstack([desired_state['pos'], desired_state['vel']]), current_time + cstep)
         
         # if OUTPUT_TO_VIDEO == 1:
@@ -163,7 +175,11 @@ for iter in range(max_iter):
     # 检查是否满足终止条件
     if terminate_check(x, current_time, stop, pos_tol, vel_tol, time_tol):
         break
-
+for qn in range(nquad):
+    desired_Euler[qn] = np.array(desired_Euler[qn])
+    print(desired_Euler[qn][:, 0])
+    print(desired_Euler[qn][:, 1])
+    print(desired_Euler[qn][:, 2])
 if OUTPUT_TO_VIDEO == 1:
     out.release()  # 关闭视频文件
 
@@ -173,14 +189,17 @@ for qn in range(nquad):
     xtraj[qn] = xtraj[qn][:iter * nstep, :]  # 截取轨迹数据
     ttraj[qn] = ttraj[qn][:iter * nstep]  # 截取时间数据
     # 假设有 nquad 个无人机
-nquad = len(xtraj)
+
+    # plt.tight_layout()  # 调整布局，避免重叠
+    # plt.show()
+
 
 # 遍历每个无人机
 for qn in range(nquad):
     # 取出当前无人机的 x, y, z 轨迹（前3列）
-    x = xtraj[qn][:, 0]  # 取出 x 轴的位置
-    y = xtraj[qn][:, 1]  # 取出 y 轴的位置
-    z = xtraj[qn][:, 2]  # 取出 z 轴的位置
+    x = xtraj[qn][:, 0]  # extract x-axis position
+    y = xtraj[qn][:, 1]  # extract y-axis position
+    z = xtraj[qn][:, 2]  # extract z-axis position
 
     # 取出时间数据
     t = ttraj[qn]
@@ -190,23 +209,120 @@ for qn in range(nquad):
 
     # 绘制 x, y, z 分别随时间变化的图
     plt.subplot(3, 1, 1)
-    plt.plot(t, x, label=f"无人机 {qn} - X")
-    plt.ylabel("X 位置 (m)")
+    plt.plot(t, x, label=f"Drone {qn} - X")
+    plt.ylabel("X Position (m)")
     plt.legend()
 
     plt.subplot(3, 1, 2)
-    plt.plot(t, y, label=f"无人机 {qn} - Y")
-    plt.ylabel("Y 位置 (m)")
+    plt.plot(t, y, label=f"Drone {qn} - Y")
+    plt.ylabel("Y Position (m)")
     plt.legend()
 
     plt.subplot(3, 1, 3)
-    plt.plot(t, z, label=f"无人机 {qn} - Z")
-    plt.ylabel("Z 位置 (m)")
-    plt.xlabel("时间 (s)")
+    plt.plot(t, z, label=f"Drone {qn} - Z")
+    plt.ylabel("Z Position (m)")
+    plt.xlabel("Time (s)")
     plt.legend()
 
-    # plt.tight_layout()  # 调整布局，避免重叠
-    # plt.show()
+
+# # 遍历每个无人机
+# for qn in range(nquad):
+#     # 取出当前无人机的四元数数据 (6 到 10 列)
+#     quaternions = xtraj[qn][:, 6:10]  # quaternions q0, q1, q2, q3
+#     print(quaternions)
+#     # 将四元数转换为欧拉角（滚转角, 俯仰角, 偏航角）
+#     r = R.from_quat(quaternions)  # quaternion format is [q1, q2, q3, q0]
+#     euler_angles = r.as_euler('xyz', degrees=True)  # 'xyz' represents roll, pitch, yaw order, returns in degrees
+
+#     # 拆分成滚转角（roll）、俯仰角（pitch）、偏航角（yaw）
+#     roll = euler_angles[:, 0]
+#     pitch = euler_angles[:, 1]
+#     yaw = euler_angles[:, 2]
+
+#     # 取出时间数据
+#     t = ttraj[qn]
+
+#     # 创建新的子图来绘制
+#     plt.figure(figsize=(10, 8))
+
+#     # 绘制滚转角 roll 随时间变化的图
+#     plt.subplot(3, 1, 1)
+#     plt.plot(t, roll, label=f"Drone {qn} - Roll")
+#     plt.ylabel("Roll (degrees)")
+#     plt.legend()
+
+#     # 绘制俯仰角 pitch 随时间变化的图
+#     plt.subplot(3, 1, 2)
+#     plt.plot(t, pitch, label=f"Drone {qn} - Pitch")
+#     plt.ylabel("Pitch (degrees)")
+#     plt.legend()
+
+#     # 绘制偏航角 yaw 随时间变化的图
+#     plt.subplot(3, 1, 3)
+#     plt.plot(t, yaw, label=f"Drone {qn} - Yaw")
+#     plt.ylabel("Yaw (degrees)")
+#     plt.xlabel("Time (s)")
+#     plt.legend()
+
+# 遍历每个无人机
+for qn in range(nquad):
+    # 取出当前无人机的四元数数据 (6 到 10 列)
+    quaternions = xtraj[qn][:, 6:10]  # 四元数 [q0, q1, q2, q3]
+    
+    # 将四元数转换为欧拉角（滚转角, 俯仰角, 偏航角）
+    r = R.from_quat(quaternions)  # 四元数格式为 [q1, q2, q3, q0]
+    euler_angles = r.as_euler('xyz', degrees=True)  # 'xyz' 表示欧拉角的顺序：roll, pitch, yaw
+    
+    # 拆分实际的滚转角（roll）、俯仰角（pitch）、偏航角（yaw）
+    roll = euler_angles[:, 0]
+    pitch = euler_angles[:, 1]
+    yaw = euler_angles[:, 2]
+    
+    # 从 desired_Euler[qn] 取出期望的滚转角、俯仰角、偏航角
+    desired_roll = desired_Euler[qn][0]    # 期望的滚转角
+    desired_pitch = desired_Euler[qn][1]   # 期望的俯仰角
+    desired_yaw = desired_Euler[qn][2]     # 期望的偏航角
+
+    # 取出时间数据，每隔 5 个点取一个
+    t = ttraj[qn][::5]
+    roll = roll[::5]   # 每隔 5 个点取一个
+    pitch = pitch[::5] # 每隔 5 个点取一个
+    yaw = yaw[::5]     # 每隔 5 个点取一个
+
+    # 创建新的子图来绘制
+    plt.figure(figsize=(10, 8))
+
+    # 绘制滚转角 roll 随时间变化的图 (实际 vs 期望)
+    plt.subplot(3, 1, 1)
+    plt.plot(t, roll, label=f"无人机 {qn} - 实际 Roll")
+    plt.plot(t, [desired_roll] * len(t), label=f"无人机 {qn} - 期望 Roll", linestyle='--')
+    plt.ylabel("滚转角 Roll (度)")
+    plt.legend()
+
+    # 绘制俯仰角 pitch 随时间变化的图 (实际 vs 期望)
+    plt.subplot(3, 1, 2)
+    plt.plot(t, pitch, label=f"无人机 {qn} - 实际 Pitch")
+    plt.plot(t, [desired_pitch] * len(t), label=f"无人机 {qn} - 期望 Pitch", linestyle='--')
+    plt.ylabel("俯仰角 Pitch (度)")
+    plt.legend()
+
+    # 绘制偏航角 yaw 随时间变化的图 (实际 vs 期望)
+    plt.subplot(3, 1, 3)
+    plt.plot(t, yaw, label=f"无人机 {qn} - 实际 Yaw")
+    plt.plot(t, [desired_yaw] * len(t), label=f"无人机 {qn} - 期望 Yaw", linestyle='--')
+    plt.ylabel("偏航角 Yaw (度)")
+    plt.xlabel("时间 (秒)")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+   
+
+
 
 # 绘制保存的每个四旋翼的位置和速度
 for qn in range(nquad):
