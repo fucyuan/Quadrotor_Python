@@ -999,7 +999,31 @@ def init_state(start, yaw):
 
     return s
 
-
+def calculate_euler_angles(desired_state):
+    # 获取期望加速度
+    acc = desired_state['acc']  # [ax, ay, az]
+    yaw = desired_state['yaw']  # 无人机的期望偏航角
+    
+    # 提取加速度的分量
+    ax = acc[0]
+    ay = acc[1]
+    az = acc[2]
+    
+    # 计算俯仰角 (pitch) 和滚转角 (roll)
+    pitch = np.arctan2(ax, np.sqrt(ay**2 + az**2))
+    roll = np.arctan2(-ay, az)
+    
+    # 偏航角 (yaw) 直接从期望状态中获取
+    yaw = desired_state['yaw']
+    
+    # 将俯仰角、滚转角和偏航角存储为欧拉角
+    euler_angles = {
+        'roll': np.degrees(roll),   # 将弧度转换为角度
+        'pitch': np.degrees(pitch), # 将弧度转换为角度
+        'yaw': np.degrees(yaw)      # 期望的偏航角直接使用
+    }
+    
+    return euler_angles
 
 
 def crazyflie():
