@@ -8,9 +8,9 @@ from trajectories import  circle,diamond,eight_shape,step
 from controller import controller
 # from utils.crazyflie import crazyflie
 # 你可以在这里更改轨迹
-# trajhandle = step
+trajhandle = step
 # trajhandle = circle
-trajhandle = diamond  # 使用 diamond 轨迹
+# trajhandle = diamond  # 使用 diamond 轨迹
 # trajhandle = eight_shape
 
 # 控制器
@@ -106,25 +106,19 @@ for iter in range(max_iter):
         xsave = odeint(quad_eom, x[qn], timeint, args=(qn, controlhandle, trajhandle, params), atol=1e-5, rtol=1e-3)
         x[qn] = xsave[-1, :]  # 更新状态
 
-        # # 计算实际可以保存的步数，使用 min 确保长度一致
-        # num_steps = min(xsave.shape[0] - 1, len(timeint) - 1)
+        if xtraj[qn] is None:
+            xtraj[qn] = np.zeros((nstep * (iter + 1), xsave.shape[1]))  # 初始化
+        if ttraj[qn] is None:
+            ttraj[qn] = np.zeros(nstep * (iter + 1))  # 初始化
 
-        # # 保存轨迹和时间
-        # xtraj[qn][iter * num_steps:(iter + 1) * num_steps, :] = xsave[:num_steps, :]
-        # ttraj[qn][iter * num_steps:(iter + 1) * num_steps] = timeint[:num_steps]
-        # print(xtraj)
+        # 计算索引，iter 从 0 开始
+        start_idx = iter * nstep
+        end_idx = (iter + 1) * nstep
+        xtraj[qn][start_idx:end_idx+1, :] = xsave[0:6, :]  # 保留 xsave 的前 n-1 行
+        ttraj[qn][start_idx:end_idx+1] = timeint[0:6]  # 保留 tsave 的前 n-1 行
 
 
-        # # 保存轨迹
-        # xtraj[qn][iter * (nstep - 1):(iter + 1) * (nstep - 1), :] = xsave[:-1, :]  # 保存轨迹
-        # ttraj[qn][iter * (nstep - 1):(iter + 1) * (nstep - 1)] = timeint[:-1]  # 保存时间
-        # import numpy as np
 
-        # # 假设 xtraj 和 ttraj 是预先定义的列表，每个列表中包含 NumPy 数组
-        # # qn 是索引，iter 和 nstep 是循环控制变量
-
-        # xtraj[qn][(iter-1)*nstep : iter*nstep, :] = xsave[:-1, :]
-        # ttraj[qn][(iter-1)*nstep : iter*nstep] = timeint[:-1]
     
 
         # 更新四旋翼图像
@@ -178,6 +172,41 @@ if OUTPUT_TO_VIDEO == 1:
 for qn in range(nquad):
     xtraj[qn] = xtraj[qn][:iter * nstep, :]  # 截取轨迹数据
     ttraj[qn] = ttraj[qn][:iter * nstep]  # 截取时间数据
+    # 假设有 nquad 个无人机
+nquad = len(xtraj)
+
+# 遍历每个无人机
+for qn in range(nquad):
+    # 取出当前无人机的 x, y, z 轨迹（前3列）
+    x = xtraj[qn][:, 0]  # 取出 x 轴的位置
+    y = xtraj[qn][:, 1]  # 取出 y 轴的位置
+    z = xtraj[qn][:, 2]  # 取出 z 轴的位置
+
+    # 取出时间数据
+    t = ttraj[qn]
+
+    # 创建新的子图来绘制
+    plt.figure(figsize=(10, 6))
+
+    # 绘制 x, y, z 分别随时间变化的图
+    plt.subplot(3, 1, 1)
+    plt.plot(t, x, label=f"无人机 {qn} - X")
+    plt.ylabel("X 位置 (m)")
+    plt.legend()
+
+    plt.subplot(3, 1, 2)
+    plt.plot(t, y, label=f"无人机 {qn} - Y")
+    plt.ylabel("Y 位置 (m)")
+    plt.legend()
+
+    plt.subplot(3, 1, 3)
+    plt.plot(t, z, label=f"无人机 {qn} - Z")
+    plt.ylabel("Z 位置 (m)")
+    plt.xlabel("时间 (s)")
+    plt.legend()
+
+    # plt.tight_layout()  # 调整布局，避免重叠
+    # plt.show()
 
 # 绘制保存的每个四旋翼的位置和速度
 for qn in range(nquad):
